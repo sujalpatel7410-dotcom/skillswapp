@@ -1,0 +1,6 @@
+{
+  "name": "SkillSwap — Learn by Teaching",
+  "description": "Peer-to-peer skill exchange platform for college students. One skill in, one skill out. Connect, learn live, earn badges, and grow.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,292 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, [data-theme="dark"], .dark *, [data-theme="dark"] *));
+
+/* 1. Sage and Linen CSS Variables */
+:root {
+  --color-bg: #F4F1EA;
+  --color-surface: #FFFFFF;
+  --color-primary: #5B7B5A;
+  --color-text: #2F3A2E;
+  --color-muted: #6F7A6C;
+  --color-soft: #E4EBDD;
+  --font-heading: system-ui, sans-serif;
+  --radius-card: 16px;
+  color-scheme: light;
+}
+
+html.dark,
+:root.dark,
+.dark,
+[data-theme="dark"] {
+  --color-bg: #141B13;
+  --color-surface: #1E271D;
+  --color-primary: #9BC29A;
+  --color-text: #F1F5F0;
+  --color-muted: #A3B2A2;
+  --color-soft: #2B372A;
+  --font-heading: system-ui, sans-serif;
+  --radius-card: 16px;
+  color-scheme: dark;
+}
+
+/* Comprehensive Dark Mode overrides for Tailwind hardcoded slate/white classes */
+.dark body,
+html.dark body {
+  background-color: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+
+.dark .bg-white,
+html.dark .bg-white,
+.dark .bg-slate-50,
+html.dark .bg-slate-50,
+.dark .bg-slate-100,
+html.dark .bg-slate-100 {
+  background-color: var(--color-surface) !important;
+}
+
+.dark .text-slate-900,
+html.dark .text-slate-900,
+.dark .text-slate-800,
+html.dark .text-slate-800,
+.dark .text-slate-700,
+html.dark .text-slate-700 {
+  color: var(--color-text) !important;
+}
+
+.dark .text-slate-600,
+html.dark .text-slate-600,
+.dark .text-slate-500,
+html.dark .text-slate-500,
+.dark .text-slate-400,
+html.dark .text-slate-400 {
+  color: var(--color-muted) !important;
+}
+
+.dark .border-slate-100,
+html.dark .border-slate-100,
+.dark .border-slate-200,
+html.dark .border-slate-200,
+.dark .border-slate-300,
+html.dark .border-slate-300,
+.dark .border-slate-700,
+html.dark .border-slate-700,
+.dark .border-slate-800,
+html.dark .border-slate-800 {
+  border-color: var(--color-soft) !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea,
+html.dark input,
+html.dark select,
+html.dark textarea {
+  background-color: var(--color-bg) !important;
+  color: var(--color-text) !important;
+  border-color: var(--color-soft) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder,
+html.dark input::placeholder,
+html.dark textarea::placeholder {
+  color: var(--color-muted) !important;
+}
+
+@layer base {
+  html, body {
+    background-color: var(--color-bg) !important;
+    color: var(--color-text) !important;
+    font-family: var(--font-heading);
+    min-height: 100%;
+  }
+
+  /* 5. Headings use --font-heading with light font weights (400 to 500) */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--font-heading) !important;
+    font-weight: 500 !important;
+    color: var(--color-text) !important;
+    letter-spacing: -0.015em;
+  }
+
+  p, span, label, div {
+    color: inherit;
+  }
+
+  input, select, textarea {
+    color: var(--color-text);
+  }
+}
+
+/* 6. Remove any gradients, neon colours or heavy shadows. Use flat colours and soft borders only. */
+*, ::before, ::after {
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+
+[class*="bg-gradient-"] {
+  background-image: none !important;
+}
+
+.bg-clip-text {
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  -webkit-text-fill-color: currentColor !important;
+}
+
+/* 2. Page background, cards, panels, modals, navigation bar */
+.sage-page-bg {
+  background-color: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+
+/* General surface styling for panels, cards, headers, asides, modals */
+.sage-surface,
+header,
+aside,
+[role="dialog"] > div:not([class*="fixed inset-0"]) {
+  background-color: var(--color-surface) !important;
+  border-color: var(--color-soft) !important;
+}
+
+/* Modal and card border radius */
+.sage-card,
+[role="dialog"] > div:not([class*="fixed inset-0"]) {
+  border-radius: var(--radius-card) !important;
+  border: 1px solid var(--color-soft) !important;
+}
+
+/* Secondary text */
+.text-muted,
+.sage-muted,
+.text-slate-400,
+.text-slate-500,
+.dark .text-slate-400,
+.dark .text-slate-500 {
+  color: var(--color-muted) !important;
+}
+
+/* 3. Buttons & Highlight Cards */
+/* Main Highlight Card */
+.highlight-card,
+.sage-highlight-card {
+  background-color: var(--color-primary) !important;
+  color: #FFFFFF !important;
+  border-radius: var(--radius-card) !important;
+  border: 1px solid var(--color-primary) !important;
+}
+
+.highlight-card h1,
+.highlight-card h2,
+.highlight-card h3,
+.highlight-card h4,
+.highlight-card p,
+.highlight-card span,
+.highlight-card svg {
+  color: #FFFFFF !important;
+}
+
+/* Main Action Buttons: background --color-soft, text --color-primary, fully rounded pill shape, no border, hover slightly darken */
+.btn-action,
+.btn-sage-action,
+.sage-pill-btn {
+  background-color: var(--color-soft) !important;
+  color: var(--color-primary) !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  font-weight: 500 !important;
+  transition: filter 0.15s ease, background-color 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-action:hover,
+.btn-sage-action:hover,
+.sage-pill-btn:hover {
+  filter: brightness(0.92);
+}
+
+.btn-action:active,
+.btn-sage-action:active,
+.sage-pill-btn:active {
+  filter: brightness(0.86);
+}
+
+/* 4. Avatar circles: background --color-soft, text --color-primary */
+.avatar-circle,
+.sage-avatar {
+  background-color: var(--color-soft) !important;
+  color: var(--color-primary) !important;
+  border-radius: 9999px !important;
+}
+
+/* Animations */
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(0.99); }
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Match Score Badge Entrance & Progress Animations */
+@keyframes match-score-fade-scale {
+  0% {
+    opacity: 0;
+    transform: scale(0.9) translateY(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-match-score-fade-scale {
+  animation: match-score-fade-scale 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.match-score-badge {
+  animation: match-score-fade-scale 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  position: relative;
+  background-color: var(--color-soft) !important;
+  color: var(--color-primary) !important;
+  border: 1px solid var(--color-soft) !important;
+  border-radius: 9999px !important;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.2s ease;
+  will-change: transform, opacity;
+}
+
+.match-score-badge:hover {
+  transform: translateY(-1px);
+  filter: brightness(0.94);
+}
+
+.match-score-progress-bar,
+.match-score-badge .match-score-progress-bar {
+  transition: width 0.85s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  will-change: width;
+  background-color: var(--color-primary) !important;
+}
+
+/* Custom scrollbar in sage & linen tones */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-soft);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
