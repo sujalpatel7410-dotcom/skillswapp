@@ -33,6 +33,7 @@ export interface UserSkill {
   category: SkillCategory;
   type: 'teach' | 'learn';
   level: SkillLevel;
+  goalLevel?: SkillLevel;     // target proficiency the learner wants to reach
   experienceYears?: number;
   experienceMonths?: number;
   learningGoal?: string;
@@ -182,6 +183,7 @@ export interface LearningSession {
   reviewComment?: string;
   hasReviewByLearner?: boolean;
   hasReviewByTeacher?: boolean;
+  coveredTopics?: string[];   // teacher-confirmed topics covered in session
   createdAt: string;
 }
 
@@ -227,9 +229,16 @@ export interface SafetyReport {
   reporterName: string;
   reportedUserId: string;
   reportedUserName: string;
-  category: 'Harassment' | 'Spam' | 'Fake profile' | 'Inappropriate content' | 'Scam' | 'Other';
+  category: 'Harassment' | 'Spam' | 'Inappropriate content' | 'No-show' | 'Other';
   details: string;
-  status: 'pending' | 'resolved' | 'dismissed';
+  status: 'pending' | 'resolved' | 'dismissed' | 'warned';
+  createdAt: string;
+}
+
+export interface BlockedUser {
+  id: string;
+  blockerId: string;
+  blockedUserId: string;
   createdAt: string;
 }
 

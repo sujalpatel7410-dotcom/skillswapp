@@ -44,7 +44,7 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
   const [showSidePanel, setShowSidePanel] = useState(true);
   const [notes, setNotes] = useState(
     session.notes ||
-      'Exchange Key Learnings:\n- Step 1: Core concepts and review\n- Step 2: Hands-on walk-through\n- Step 3: Key takeaways & next steps'
+    'Exchange Key Learnings:\n- Step 1: Core concepts and review\n- Step 2: Hands-on walk-through\n- Step 3: Key takeaways & next steps'
   );
   const [chatInput, setChatInput] = useState('');
   const [inCallMessages, setInCallMessages] = useState<
@@ -62,6 +62,15 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
   const [reviewComment, setReviewComment] = useState(
     'Great exchange! Clear explanations and very supportive peer learning.'
   );
+  const [coveredTopics, setCoveredTopics] = useState<string[]>([]);
+
+  const suggestedTopics = [
+    'Basics & Fundamentals',
+    'Practical Application',
+    'Troubleshooting & Debugging',
+    'Advanced Concepts',
+    'Best Practices',
+  ];
 
   const [isJitsiLoading, setIsJitsiLoading] = useState(true);
   const [scriptLoadFailed, setScriptLoadFailed] = useState(false);
@@ -242,6 +251,9 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
 
   const handleSubmitReview = () => {
     storageService.completeSession(session.id, ratingScore, reviewComment);
+    if (isTeacher && coveredTopics.length > 0) {
+      storageService.updateSessionCoverage(session.id, coveredTopics);
+    }
     try {
       confetti({
         particleCount: 100,
@@ -318,11 +330,10 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
           <button
             type="button"
             onClick={() => setShowSidePanel(prev => !prev)}
-            className={`p-2 rounded-xl border text-xs font-medium transition-colors ${
-              showSidePanel
+            className={`p-2 rounded-xl border text-xs font-medium transition-colors ${showSidePanel
                 ? 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'
                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
-            }`}
+              }`}
             title={showSidePanel ? 'Hide Notes Panel' : 'Show Notes Panel'}
           >
             {showSidePanel ? (
@@ -399,11 +410,10 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('notes')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === 'notes'
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${activeTab === 'notes'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
-                }`}
+                  }`}
               >
                 <FileText className="w-3.5 h-3.5" />
                 <span>Session Notes</span>
@@ -411,11 +421,10 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
               <button
                 type="button"
                 onClick={() => setActiveTab('chat')}
-                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${
-                  activeTab === 'chat'
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 ${activeTab === 'chat'
                     ? 'bg-emerald-600 text-white shadow-sm'
                     : 'text-slate-400 hover:text-white'
-                }`}
+                  }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
                 <span>In-Call Chat</span>
@@ -467,7 +476,7 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
                   <button
                     type="submit"
                     className="px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold"
-                  >
+                   aria-label="Send">
                     <Send className="w-3.5 h-3.5" />
                   </button>
                 </form>
@@ -490,6 +499,30 @@ export const VideoCallRoom: React.FC<VideoCallRoomProps> = ({
             <strong>{session.skillName}</strong>! Both your profiles will earn +1 completed session
             and streak increments.
           </div>
+
+          {isTeacher && (
+            <div>
+              <label className="block font-bold text-slate-700 dark:text-slate-300 mb-2">
+                What did you cover in this session? (Helps learner track progress)
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {suggestedTopics.map(topic => (
+                  <label key={topic} className="flex items-center gap-2 p-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={coveredTopics.includes(topic)}
+                      onChange={(e) => {
+                        if (e.target.checked) setCoveredTopics([...coveredTopics, topic]);
+                        else setCoveredTopics(coveredTopics.filter(t => t !== topic));
+                      }}
+                      className="accent-emerald-600 rounded bg-slate-900 border-slate-700"
+                    />
+                    <span className="text-slate-700 dark:text-slate-300 select-none">{topic}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-2">

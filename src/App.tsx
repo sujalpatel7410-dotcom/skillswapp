@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { usePageTitle } from './hooks/usePageTitle';
 import {
   Routes,
   Route,
@@ -13,6 +14,7 @@ import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { User, LearningSession } from './types';
 import { storageService } from './services/storageService';
 import { authService } from './services/authService';
+import { startScheduler, stopScheduler } from './services/notificationScheduler';
 import { Navbar } from './components/layout/Navbar';
 import { Sidebar } from './components/layout/Sidebar';
 import { BottomNav } from './components/layout/BottomNav';
@@ -27,6 +29,7 @@ import { MatchingView } from './components/matching/MatchingView';
 import { DiscoverView } from './components/matching/DiscoverView';
 import { ProfileView } from './components/profile/ProfileView';
 import { ChatView } from './components/chat/ChatView';
+import { SettingsView } from './components/settings/SettingsView';
 import { SessionsView } from './components/sessions/SessionsView';
 import { VideoCallRoom } from './components/sessions/VideoCallRoom';
 import { SkillsView } from './components/skills/SkillsView';
@@ -138,16 +141,20 @@ const AuthenticatedLayout: React.FC<{
       />
 
       {/* Core App View Container */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-full overflow-x-hidden">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 min-w-0 max-w-full overflow-x-hidden pb-24 md:pb-8">
         <Outlet />
       </main>
     </div>
   );
 };
 
-export function App() {
+// Inner component that uses router hooks
+function AppInner() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Dynamic page titles & meta descriptions
+  usePageTitle();
 
   const [currentUser, setCurrentUser] = useState<User | null>(() => storageService.getCurrentUser());
   const [activeChatPartnerId, setActiveChatPartnerId] = useState<string | null>(null);
@@ -190,6 +197,25 @@ export function App() {
     }
   }, [isDarkMode]);
 
+  // Start / stop the 1-hour session reminder scheduler
+  useEffect(() => {
+    if (currentUser) {
+      startScheduler(currentUser.id, () => {
+        try {
+          const raw = localStorage.getItem('skillswap_notif_prefs');
+          if (raw) {
+            const prefs = JSON.parse(raw);
+            return prefs.session !== false;
+          }
+        } catch { /* */ }
+        return true;
+      });
+    } else {
+      stopScheduler();
+    }
+    return () => stopScheduler();
+  }, [currentUser?.id]);
+
   // Subscribe to storage changes
   useEffect(() => {
     const update = () => {
@@ -222,6 +248,15 @@ export function App() {
       navigate(route);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+    } catch {
+      // fallback
+    }
+    handleNavigate('/');
   };
 
   const handleOpenChatWith = (partnerId: string) => {
@@ -272,7 +307,8 @@ export function App() {
       '/progress',
       '/leaderboard',
       '/badges',
-      '/admin'
+      '/admin',
+      '/settings'
     ].includes(location.pathname) || location.pathname.startsWith('/profile');
 
   return (
@@ -451,6 +487,17 @@ export function App() {
           />
 
           <Route
+            path="/settings"
+            element={
+              <SettingsView
+                currentUser={currentUser!}
+                onNavigate={handleNavigate}
+                onLogout={handleLogout}
+              />
+            }
+          />
+
+          <Route
             path="/progress"
             element={
               <ProgressView
@@ -582,6 +629,10 @@ export function App() {
       )}
     </div>
   );
+}
+
+export function App() {
+  return <AppInner />;
 }
 
 export default App;

@@ -336,16 +336,31 @@ CREATE TABLE IF NOT EXISTS reports (
   reported_user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
   reported_user_name TEXT NOT NULL,
   category TEXT NOT NULL CHECK (
-    category IN ('Harassment', 'Spam', 'Fake profile', 'Inappropriate content', 'Scam', 'Other')
+    category IN ('Harassment', 'Spam', 'Inappropriate content', 'No-show', 'Other')
   ),
   details TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending'
-    CHECK (status IN ('pending', 'resolved', 'dismissed')),
+    CHECK (status IN ('pending', 'resolved', 'dismissed', 'warned')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX IF NOT EXISTS idx_reports_reporter_id ON reports(reporter_id);
 CREATE INDEX IF NOT EXISTS idx_reports_status ON reports(status);
+
+-- ----------------------------------------------------------------------------
+-- BLOCKED_USERS (User block relationships)
+-- Corresponds to BlockedUser in src/types/index.ts
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS blocked_users (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  blocker_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  blocked_user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (blocker_id, blocked_user_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_blocked_users_blocker_id ON blocked_users(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_users_blocked_user_id ON blocked_users(blocked_user_id);
 
 
 -- ============================================================================
@@ -365,6 +380,7 @@ ALTER TABLE badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_badges ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blocked_users ENABLE ROW LEVEL SECURITY;
 
 -- ----------------------------------------------------------------------------
 -- RLS: PROFILES
@@ -597,6 +613,22 @@ CREATE POLICY "Admins can update report status"
   ON reports FOR UPDATE
   USING ((SELECT is_admin FROM profiles WHERE id = auth.uid()) = TRUE)
   WITH CHECK ((SELECT is_admin FROM profiles WHERE id = auth.uid()) = TRUE);
+
+-- ----------------------------------------------------------------------------
+-- RLS: BLOCKED_USERS
+-- Users can only view and manage their own block relationships
+-- ----------------------------------------------------------------------------
+CREATE POLICY "Users can view their own block relationships"
+  ON blocked_users FOR SELECT
+  USING (auth.uid() = blocker_id OR auth.uid() = blocked_user_id);
+
+CREATE POLICY "Users can create block relationships"
+  ON blocked_users FOR INSERT
+  WITH CHECK (auth.uid() = blocker_id);
+
+CREATE POLICY "Users can remove their own blocks"
+  ON blocked_users FOR DELETE
+  USING (auth.uid() = blocker_id);
 
 -- ============================================================================
 -- 5. INITIAL SEED DATA (CORE BADGES & SKILL CATEGORIES)

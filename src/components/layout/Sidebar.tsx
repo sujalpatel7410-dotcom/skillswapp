@@ -11,7 +11,8 @@ import {
   Award,
   ShieldAlert,
   GraduationCap,
-  Radio
+  Radio,
+  Settings
 } from 'lucide-react';
 import { User } from '../../types';
 import { storageService } from '../../services/storageService';
@@ -39,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: '/matches',
-      label: 'AI Matches',
+      label: 'Core Exchange',
       icon: Sparkles,
       badge: pendingRequestsCount > 0 ? `${pendingRequestsCount}` : undefined,
       highlight: true
@@ -82,6 +83,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       id: '/badges',
       label: 'Badges & Rewards',
       icon: Award
+    },
+    {
+      id: '/settings',
+      label: 'Settings',
+      icon: Settings
     }
   ];
 

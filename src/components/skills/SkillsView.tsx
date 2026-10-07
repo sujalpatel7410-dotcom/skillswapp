@@ -3,6 +3,8 @@ import { BookOpen, Plus, Trash2, Edit2, Sparkles, Check, ArrowRight } from 'luci
 import { User, UserSkill, SkillLevel, SkillCategory } from '../../types';
 import { storageService } from '../../services/storageService';
 import { SkillChip } from '../ui/SkillChip';
+import { usePageLoader } from '../../hooks/usePageLoader';
+import { SkillsSkeleton } from '../ui/Skeleton';
 import { Modal } from '../ui/Modal';
 
 interface SkillsViewProps {
@@ -11,6 +13,7 @@ interface SkillsViewProps {
 }
 
 export const SkillsView: React.FC<SkillsViewProps> = ({ currentUser, onNavigate }) => {
+  const isLoading = usePageLoader(450);
   const [skills, setSkills] = useState<UserSkill[]>([]);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [modalType, setModalType] = useState<'teach' | 'learn'>('teach');
@@ -57,6 +60,8 @@ export const SkillsView: React.FC<SkillsViewProps> = ({ currentUser, onNavigate 
   const handleRemoveSkill = (skillId: string) => {
     storageService.removeUserSkill(skillId);
   };
+
+  if (isLoading) return <SkillsSkeleton />;
 
   return (
     <div className="space-y-8 pb-16 max-w-5xl mx-auto">

@@ -60,7 +60,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
             backgroundColor: 'var(--color-soft)',
             color: 'var(--color-primary)'
           }}
-        >
+         aria-label="Action">
           {actionLabel}
         </button>
       )}

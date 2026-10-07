@@ -10,6 +10,7 @@ import {
   Badge,
   AppNotification,
   SafetyReport,
+  BlockedUser,
   College
 } from '../types';
 import {
@@ -139,6 +140,7 @@ function mapRowToUserSkill(row: any): UserSkill {
     category: row.category,
     type: row.type,
     level: row.level,
+    goalLevel: row.goal_level || undefined,
     experienceYears: row.experience_years ?? undefined,
     experienceMonths: row.experience_months ?? undefined,
     learningGoal: row.learning_goal || undefined,
@@ -155,6 +157,7 @@ function mapUserSkillToRow(us: Partial<UserSkill>): Record<string, any> {
   if (us.category) row.category = us.category;
   if (us.type) row.type = us.type;
   if (us.level) row.level = us.level;
+  if (us.goalLevel !== undefined) row.goal_level = us.goalLevel;
   if (us.experienceYears !== undefined) row.experience_years = us.experienceYears;
   if (us.experienceMonths !== undefined) row.experience_months = us.experienceMonths;
   if (us.learningGoal !== undefined) row.learning_goal = us.learningGoal;
@@ -274,6 +277,7 @@ function mapRowToSession(row: any): LearningSession {
     reviewComment: row.review_comment || undefined,
     hasReviewByLearner: Boolean(row.has_review_by_learner),
     hasReviewByTeacher: Boolean(row.has_review_by_teacher),
+    coveredTopics: Array.isArray(row.covered_topics) ? row.covered_topics : undefined,
     createdAt: row.created_at
   };
 }
@@ -301,6 +305,7 @@ function mapSessionToRow(s: Partial<LearningSession>): Record<string, any> {
   if (s.reviewComment !== undefined) row.review_comment = s.reviewComment;
   if (s.hasReviewByLearner !== undefined) row.has_review_by_learner = s.hasReviewByLearner;
   if (s.hasReviewByTeacher !== undefined) row.has_review_by_teacher = s.hasReviewByTeacher;
+  if (s.coveredTopics !== undefined) row.covered_topics = s.coveredTopics;
   return row;
 }
 
@@ -401,6 +406,7 @@ class StorageService {
   private badges: Badge[] = SEED_BADGES.map(b => ({ ...b, progress: 0, unlockedAt: undefined }));
   private notifications: AppNotification[] = [];
   private reports: SafetyReport[] = [];
+  private blockedUsers: BlockedUser[] = [];
   private currentUserId: string | null = null;
   private isFetching = false;
   private realtimeChannel: any = null;
@@ -544,7 +550,8 @@ class StorageService {
         badgesRes,
         userBadgesRes,
         notifsRes,
-        reportsRes
+        reportsRes,
+        blockedUsersRes
       ] = await Promise.allSettled([
         supabase.from('profiles').select('*'),
         supabase.from('skills').select('*'),
@@ -557,7 +564,8 @@ class StorageService {
         supabase.from('badges').select('*'),
         supabase.from('user_badges').select('*'),
         supabase.from('notifications').select('*').order('created_at', { ascending: false }),
-        supabase.from('reports').select('*').order('created_at', { ascending: false })
+        supabase.from('reports').select('*').order('created_at', { ascending: false }),
+        supabase.from('blocked_users').select('*')
       ]);
 
       if (profilesRes.status === 'fulfilled' && profilesRes.value.data) {
@@ -595,13 +603,13 @@ class StorageService {
       // Badges: Merge catalog with user_badges progress
       const baseBadges = (badgesRes.status === 'fulfilled' && badgesRes.value.data && badgesRes.value.data.length > 0)
         ? badgesRes.value.data.map((b: any) => ({
-            id: b.id,
-            title: b.title,
-            description: b.description,
-            icon: b.icon,
-            category: b.category,
-            requirement: b.requirement
-          }))
+          id: b.id,
+          title: b.title,
+          description: b.description,
+          icon: b.icon,
+          category: b.category,
+          requirement: b.requirement
+        }))
         : SEED_BADGES;
 
       const userBadgeMap = new Map<string, { progress: number; unlockedAt?: string }>();
@@ -631,6 +639,15 @@ class StorageService {
 
       if (reportsRes.status === 'fulfilled' && reportsRes.value.data) {
         this.reports = reportsRes.value.data.map(mapRowToReport);
+      }
+
+      if (blockedUsersRes.status === 'fulfilled' && blockedUsersRes.value.data) {
+        this.blockedUsers = blockedUsersRes.value.data.map((row: any): BlockedUser => ({
+          id: row.id,
+          blockerId: row.blocker_id,
+          blockedUserId: row.blocked_user_id,
+          createdAt: row.created_at
+        }));
       }
 
       this.notify();
@@ -1117,7 +1134,7 @@ class StorageService {
     senderName?: string,
     text?: string,
     attachmentUrl?: string
-  ): Message {
+  ): Message | null {
     let convoId = '';
     let sId = '';
     let sName = '';
@@ -1137,6 +1154,16 @@ class StorageService {
       sId = senderId || this.getCurrentUserId() || '';
       sName = senderName || (sId ? this.getUserById(sId)?.name : 'Student') || 'Student';
       msgText = text || '';
+    }
+
+    // Block check: find recipient from conversation and check if either party blocked the other
+    const convo = this.conversations.find(c => c.id === convoId);
+    if (convo && sId) {
+      const recipientId = convo.participantIds.find(id => id !== sId);
+      if (recipientId && this.isBlocked(sId, recipientId)) {
+        console.warn('sendMessage blocked: user is blocked');
+        return null;
+      }
     }
 
     const newMessage: Message = {
@@ -1343,6 +1370,30 @@ class StorageService {
     }
   }
 
+  public updateSessionNotes(sessionId: string, notes: string) {
+    const idx = this.sessions.findIndex(s => s.id === sessionId);
+    if (idx >= 0) {
+      this.sessions[idx].notes = notes;
+      this.notify();
+
+      if (isSupabaseConfigured) {
+        runAsyncMutation(() => supabase.from('sessions').update({ notes }).eq('id', sessionId), 'updateSessionNotes');
+      }
+    }
+  }
+
+  public updateSessionCoverage(sessionId: string, coveredTopics: string[]) {
+    const idx = this.sessions.findIndex(s => s.id === sessionId);
+    if (idx >= 0) {
+      this.sessions[idx].coveredTopics = coveredTopics;
+      this.notify();
+
+      if (isSupabaseConfigured) {
+        runAsyncMutation(() => supabase.from('sessions').update({ covered_topics: coveredTopics }).eq('id', sessionId), 'updateSessionCoverage');
+      }
+    }
+  }
+
   // Reviews
   public getReviews(userId?: string): Review[] {
     if (!userId) return this.reviews;
@@ -1479,6 +1530,24 @@ class StorageService {
     }
   }
 
+  public deleteNotification(id: string) {
+    this.notifications = this.notifications.filter(n => n.id !== id);
+    this.notify();
+
+    if (isSupabaseConfigured) {
+      runAsyncMutation(() => supabase.from('notifications').delete().eq('id', id), 'deleteNotification');
+    }
+  }
+
+  public clearAllNotifications(userId: string) {
+    this.notifications = this.notifications.filter(n => n.userId !== userId);
+    this.notify();
+
+    if (isSupabaseConfigured) {
+      runAsyncMutation(() => supabase.from('notifications').delete().eq('user_id', userId), 'clearAllNotifications');
+    }
+  }
+
   // Reports
   public getReports(): SafetyReport[] {
     return this.reports;
@@ -1509,6 +1578,126 @@ class StorageService {
 
       if (isSupabaseConfigured) {
         runAsyncMutation(() => supabase.from('reports').update({ status }).eq('id', reportId), 'updateReportStatus');
+      }
+    }
+  }
+
+  public warnUser(userId: string) {
+    const target = this.getUserById(userId);
+    if (!target) return;
+    // Notify the warned user
+    this.createNotification({
+      userId,
+      title: 'Community Guidelines Warning ⚠️',
+      description: 'You have received a formal warning from campus administrators. Please review community guidelines.',
+      type: 'system',
+      link: '/profile'
+    });
+  }
+
+  // Blocked Users
+  public getBlockedUsers(userId?: string): BlockedUser[] {
+    if (!userId) return this.blockedUsers;
+    return this.blockedUsers.filter(b => b.blockerId === userId);
+  }
+
+  public isBlocked(blockerId: string, targetUserId: string): boolean {
+    return this.blockedUsers.some(
+      b =>
+        (b.blockerId === blockerId && b.blockedUserId === targetUserId) ||
+        (b.blockerId === targetUserId && b.blockedUserId === blockerId)
+    );
+  }
+
+  public blockUser(blockerId: string, blockedUserId: string): BlockedUser {
+    // Already blocked?
+    const exists = this.blockedUsers.find(
+      b => b.blockerId === blockerId && b.blockedUserId === blockedUserId
+    );
+    if (exists) return exists;
+
+    const newBlock: BlockedUser = {
+      id: generateUUID(),
+      blockerId,
+      blockedUserId,
+      createdAt: new Date().toISOString()
+    };
+    this.blockedUsers.push(newBlock);
+    this.notify();
+
+    if (isSupabaseConfigured) {
+      runAsyncMutation(
+        () => supabase.from('blocked_users').insert({
+          id: newBlock.id,
+          blocker_id: blockerId,
+          blocked_user_id: blockedUserId,
+          created_at: newBlock.createdAt
+        }),
+        'blockUser'
+      );
+    }
+
+    return newBlock;
+  }
+
+  public unblockUser(blockerId: string, blockedUserId: string) {
+    this.blockedUsers = this.blockedUsers.filter(
+      b => !(b.blockerId === blockerId && b.blockedUserId === blockedUserId)
+    );
+    this.notify();
+
+    if (isSupabaseConfigured) {
+      runAsyncMutation(
+        () => supabase.from('blocked_users')
+          .delete()
+          .eq('blocker_id', blockerId)
+          .eq('blocked_user_id', blockedUserId),
+        'unblockUser'
+      );
+    }
+  }
+
+  // --- PRIVACY & DATA MANAGEMENT ---
+
+  public exportUserData(userId: string): string {
+    const data = {
+      profile: this.users.find(u => u.id === userId),
+      skills: this.userSkills.filter(s => s.userId === userId),
+      sessions: this.sessions.filter(s => s.teacherId === userId || s.learnerId === userId),
+      messages: this.messages.filter(m => m.senderId === userId),
+      notifications: this.notifications.filter(n => n.userId === userId),
+      reviewsLoaded: this.reviews.filter(r => r.reviewerId === userId || r.recipientId === userId)
+    };
+    return JSON.stringify(data, null, 2);
+  }
+
+  public async deleteAccount(userId: string): Promise<void> {
+    // Note: Since this is a local state/prototype app running off mostly memory + Supabase sync,
+    // we drop everything referring to the user inside our local arrays. In actual production,
+    // Supabase RLS policies and cascades would handle most of this securely.
+    this.users = this.users.filter(u => u.id !== userId);
+    this.userSkills = this.userSkills.filter(s => s.userId !== userId);
+    this.matchRequests = this.matchRequests.filter(r => r.senderId !== userId && r.receiverId !== userId);
+    // don't delete entire conversations so the other peer keeps history, just mark account as deleted if wanted
+    // For now, leave messages intact, just scrub user object.
+    this.sessions = this.sessions.filter(s => s.teacherId !== userId && s.learnerId !== userId);
+    this.notifications = this.notifications.filter(n => n.userId !== userId);
+
+    if (this.currentUserId === userId) {
+      if (isSupabaseConfigured) {
+        await supabase.auth.signOut();
+      }
+      this.currentUserId = null;
+    } else {
+      this.notify();
+    }
+
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.from('users').delete().eq('id', userId);
+        // Cascading deletes would handle the rest in Supabase.
+      } catch (err) {
+        console.error('Failed to delete user in DB', err);
       }
     }
   }

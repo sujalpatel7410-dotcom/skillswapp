@@ -3,12 +3,16 @@ import { Award, Lock, CheckCircle2, Sparkles } from 'lucide-react';
 import { User, Badge } from '../../types';
 import { storageService } from '../../services/storageService';
 import confetti from 'canvas-confetti';
+import { usePageLoader } from '../../hooks/usePageLoader';
+import { BadgesSkeleton } from '../ui/Skeleton';
 
 interface BadgesViewProps {
   currentUser: User;
 }
 
 export const BadgesView: React.FC<BadgesViewProps> = ({ currentUser }) => {
+  const isLoading = usePageLoader(400);
+  if (isLoading) return <BadgesSkeleton />;
   const allBadges = storageService.getBadges();
   const userBadgeIds = currentUser.badges || [];
 
@@ -19,7 +23,7 @@ export const BadgesView: React.FC<BadgesViewProps> = ({ currentUser }) => {
         spread: 80,
         origin: { y: 0.6 }
       });
-    } catch {}
+    } catch { }
   };
 
   const categories = ['Teaching', 'Learning', 'Streaks', 'Special'];

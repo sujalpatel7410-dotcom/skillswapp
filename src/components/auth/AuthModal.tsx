@@ -242,7 +242,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 backgroundColor: 'var(--color-primary)',
                 color: '#ffffff'
               }}
-            >
+             aria-label="Loader2">
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -282,7 +282,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 color: 'var(--color-text)',
                 border: '1px solid var(--color-soft)'
               }}
-            >
+             aria-label="Loader2">
               {googleLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin text-indigo-500" />

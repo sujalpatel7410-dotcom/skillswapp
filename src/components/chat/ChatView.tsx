@@ -10,11 +10,17 @@ import {
   CheckCheck,
   ShieldCheck,
   Sparkles,
-  PhoneCall
+  PhoneCall,
+  Ban,
+  Flag,
+  MoreVertical
 } from 'lucide-react';
 import { User, Conversation, Message, LearningSession } from '../../types';
 import { storageService } from '../../services/storageService';
 import { EmptyState } from '../ui/EmptyState';
+import { ReportModal } from '../ui/ReportModal';
+import { usePageLoader } from '../../hooks/usePageLoader';
+import { ChatSkeleton } from '../ui/Skeleton';
 
 interface ChatViewProps {
   currentUser: User;
@@ -29,16 +35,21 @@ export const ChatView: React.FC<ChatViewProps> = ({
   onNavigate,
   onStartVideoSession
 }) => {
+  const isLoading = usePageLoader(400);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [selectedConvoId, setSelectedConvoId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isCodeSnippet, setIsCodeSnippet] = useState(false);
   const [partnerIsTyping, setPartnerIsTyping] = useState(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [isBlockedState, setIsBlockedState] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const partnerTypingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const myTypingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isTypingRef = useRef(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Initialize or select partner conversation
   useEffect(() => {
@@ -174,6 +185,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const activeConvo = conversations.find(c => c.id === selectedConvoId);
   const partnerEntry = activeConvo?.participants.find(p => p.id !== currentUser.id);
   const partner = partnerEntry ? storageService.getUserById(partnerEntry.id) : null;
+
+  // Sync blocked state when partner changes
+  useEffect(() => {
+    if (partner) {
+      setIsBlockedState(storageService.isBlocked(currentUser.id, partner.id));
+    }
+  }, [partner?.id, currentUser.id]);
+
+  // Close more menu on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setIsMoreMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
@@ -442,7 +471,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 <button
                   type="button"
                   onClick={handleLaunchDirectCall}
-                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-85 transition-opacity"
+                  disabled={isBlockedState}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-medium cursor-pointer hover:opacity-85 transition-opacity disabled:opacity-40"
                   style={{
                     backgroundColor: 'var(--color-soft)',
                     color: 'var(--color-primary)'
@@ -452,6 +482,63 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   <Video className="w-3.5 h-3.5" />
                   <span>Start Video Exchange</span>
                 </button>
+
+                {/* More menu: Block & Report */}
+                <div className="relative" ref={moreMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setIsMoreMenuOpen(prev => !prev)}
+                    className="p-2 rounded-full cursor-pointer transition-colors hover:bg-[var(--color-soft)]"
+                    style={{ color: 'var(--color-muted)' }}
+                    title="More options"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+
+                  {isMoreMenuOpen && (
+                    <div
+                      className="absolute right-0 top-full mt-1 z-50 min-w-48 py-1 rounded-2xl shadow-xl"
+                      style={{
+                        backgroundColor: 'var(--color-surface)',
+                        border: '1px solid var(--color-soft)'
+                      }}
+                    >
+                      {/* Block / Unblock */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!partner) return;
+                          if (isBlockedState) {
+                            storageService.unblockUser(currentUser.id, partner.id);
+                          } else {
+                            storageService.blockUser(currentUser.id, partner.id);
+                          }
+                          setIsBlockedState(!isBlockedState);
+                          setIsMoreMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-left cursor-pointer hover:bg-[var(--color-soft)] transition-colors"
+                        style={{ color: isBlockedState ? 'var(--color-primary)' : '#ef4444' }}
+                      >
+                        <Ban className="w-3.5 h-3.5" />
+                        <span>{isBlockedState ? 'Unblock User' : 'Block User'}</span>
+                      </button>
+
+                      {/* Report */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsReportOpen(true);
+                          setIsMoreMenuOpen(false);
+                        }}
+                        className="flex items-center gap-2.5 w-full px-4 py-2.5 text-xs font-medium text-left cursor-pointer hover:bg-[var(--color-soft)] transition-colors"
+                        style={{ color: '#ef4444' }}
+                      >
+                        <Flag className="w-3.5 h-3.5" />
+                        <span>Report User</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -580,44 +667,60 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 borderTop: '1px solid var(--color-soft)'
               }}
             >
-              <button
-                type="button"
-                onClick={() => setIsCodeSnippet(!isCodeSnippet)}
-                className="p-2 rounded-full cursor-pointer transition-colors"
-                style={{
-                  backgroundColor: isCodeSnippet ? 'var(--color-soft)' : 'transparent',
-                  color: 'var(--color-primary)',
-                  border: '1px solid var(--color-soft)'
-                }}
-                title="Send as code snippet"
-              >
-                <Code className="w-4 h-4" />
-              </button>
+              {isBlockedState ? (
+                <div
+                  className="flex-1 flex items-center justify-center gap-2 py-2 text-xs font-medium rounded-full"
+                  style={{
+                    backgroundColor: 'var(--color-bg)',
+                    border: '1px solid var(--color-soft)',
+                    color: '#ef4444'
+                  }}
+                >
+                  <Ban className="w-4 h-4" />
+                  <span>You blocked {partner?.name}. Unblock to send messages.</span>
+                </div>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setIsCodeSnippet(!isCodeSnippet)}
+                    className="p-2 rounded-full cursor-pointer transition-colors"
+                    style={{
+                      backgroundColor: isCodeSnippet ? 'var(--color-soft)' : 'transparent',
+                      color: 'var(--color-primary)',
+                      border: '1px solid var(--color-soft)'
+                    }}
+                    title="Send as code snippet"
+                  >
+                    <Code className="w-4 h-4" />
+                  </button>
 
-              <input
-                type="text"
-                value={inputText}
-                onChange={handleInputChange}
-                placeholder={isCodeSnippet ? 'Paste code snippet here...' : `Message ${partner.name}...`}
-                className="flex-1 px-4 py-2 text-xs sm:text-sm rounded-full outline-none"
-                style={{
-                  backgroundColor: 'var(--color-bg)',
-                  border: '1px solid var(--color-soft)',
-                  color: 'var(--color-text)'
-                }}
-              />
+                  <input
+                    type="text"
+                    value={inputText}
+                    onChange={handleInputChange}
+                    placeholder={isCodeSnippet ? 'Paste code snippet here...' : `Message ${partner?.name}...`}
+                    className="flex-1 px-4 py-2 text-xs sm:text-sm rounded-full outline-none"
+                    style={{
+                      backgroundColor: 'var(--color-bg)',
+                      border: '1px solid var(--color-soft)',
+                      color: 'var(--color-text)'
+                    }}
+                  />
 
-              <button
-                type="submit"
-                disabled={!inputText.trim()}
-                className="p-2.5 rounded-full cursor-pointer transition-opacity hover:opacity-85 disabled:opacity-40"
-                style={{
-                  backgroundColor: 'var(--color-soft)',
-                  color: 'var(--color-primary)'
-                }}
-              >
-                <Send className="w-4 h-4" />
-              </button>
+                  <button
+                    type="submit"
+                    disabled={!inputText.trim()}
+                    className="p-2.5 rounded-full cursor-pointer transition-opacity hover:opacity-85 disabled:opacity-40"
+                    style={{
+                      backgroundColor: 'var(--color-soft)',
+                      color: 'var(--color-primary)'
+                    }}
+                   aria-label="Send">
+                    <Send className="w-4 h-4" />
+                  </button>
+                </>
+              )}
             </form>
           </>
         ) : (
@@ -631,6 +734,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
           />
         )}
       </div>
+
+      {/* Report Modal */}
+      {partner && (
+        <ReportModal
+          isOpen={isReportOpen}
+          onClose={() => setIsReportOpen(false)}
+          reporter={currentUser}
+          reported={partner}
+        />
+      )}
     </div>
   );
 };

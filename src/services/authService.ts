@@ -185,9 +185,25 @@ class AuthService {
     }
 
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured. Please define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
-      );
+      // Mock local authentication fallback
+      const users = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('skillswap_users') || '[]') : [];
+      let mockUser = users.find((u: any) => u.email === email.trim());
+
+      // If no generic user found but it's a seed email like sujal, search storageService heavily
+      if (!mockUser) {
+        mockUser = storageService.getUserById('usr-sujal'); // Fallback demo user
+      }
+
+      if (!mockUser && email.trim() === 'sujal@stanford.edu') {
+        throw new Error('Run storageService.resetToDefaults() to load mock data first.');
+      }
+
+      if (!mockUser) {
+        throw new Error('Invalid email or password. (Supabase is not configured - mocked error)');
+      }
+
+      storageService.setCurrentUserId(mockUser.id);
+      return mockUser;
     }
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -219,40 +235,11 @@ class AuthService {
       throw new Error('Password must be at least 6 characters long.');
     }
 
-    if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured. Please define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
-      );
-    }
+    const requiresEmailConfirmation = false;
 
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email: data.email.trim(),
-      password: data.password,
-      options: {
-        data: {
-          name: data.name.trim(),
-          college_name: data.collegeName,
-          course: data.course,
-          graduation_year: data.graduationYear
-        }
-      }
-    });
-
-    if (signUpError) {
-      if (signUpError.message.includes('already registered')) {
-        throw new Error('An account with this email already exists. Please sign in instead.');
-      }
-      throw new Error(signUpError.message);
-    }
-
-    if (!authData.user) {
-      throw new Error('Sign up failed. Please try again.');
-    }
-
-    const requiresEmailConfirmation = !authData.session;
-
+    // Create base user object
     const newUser: User = {
-      id: authData.user.id,
+      id: isSupabaseConfigured ? 'pending' : `usr-${Date.now()}`,
       name: data.name.trim(),
       email: data.email.trim(),
       photoURL:
@@ -279,6 +266,44 @@ class AuthService {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
+
+    if (!isSupabaseConfigured) {
+      // Mock local fallback registration
+      const users = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('skillswap_users') || '[]') : [];
+      if (users.find((u: any) => u.email === data.email.trim())) {
+        throw new Error('An account with this email already exists (mock).');
+      }
+      storageService.saveUser(newUser);
+      storageService.setCurrentUserId(newUser.id);
+      return { user: newUser, requiresEmailConfirmation: false };
+    }
+
+    const { data: authData, error: signUpError } = await supabase.auth.signUp({
+      email: data.email.trim(),
+      password: data.password,
+      options: {
+        data: {
+          name: data.name.trim(),
+          college_name: data.collegeName,
+          course: data.course,
+          graduation_year: data.graduationYear
+        }
+      }
+    });
+
+    if (signUpError) {
+      if (signUpError.message.includes('already registered')) {
+        throw new Error('An account with this email already exists. Please sign in instead.');
+      }
+      throw new Error(signUpError.message);
+    }
+
+    if (!authData.user) {
+      throw new Error('Sign up failed. Please try again.');
+    }
+
+    newUser.id = authData.user.id;
+    const finalRequiresEmail = !authData.session;
 
     // Save profile to Supabase database
     try {
@@ -319,15 +344,54 @@ class AuthService {
 
     return {
       user: newUser,
-      requiresEmailConfirmation
+      requiresEmailConfirmation: finalRequiresEmail
     };
   }
 
   public async loginWithGoogle(): Promise<void> {
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured. Please define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
-      );
+      // Mock Google Login by just logging into the demo user directly
+      let mockUser = storageService.getUserById('usr-sujal');
+
+      if (!mockUser) {
+        // Find any existing user
+        const users = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('skillswap_users') || '[]') : [];
+        if (users.length > 0) {
+          mockUser = users[0];
+        } else {
+          // Construct a brand new mock user so the UI has someone to log into
+          mockUser = {
+            id: `usr-google-${Date.now()}`,
+            name: 'Google Scholar',
+            email: 'scholar@gmail.com',
+            photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80',
+            collegeId: 'col-custom',
+            collegeName: 'Google Campus',
+            course: 'Computer Science',
+            graduationYear: 2026,
+            bio: 'I signed in seamlessly using the mock Google OAuth flow!',
+            verificationStatus: 'unverified',
+            rating: 5.0,
+            reviewCount: 0,
+            completedSessions: 0,
+            hoursLearned: 0,
+            hoursTaught: 0,
+            learningStreak: 1,
+            longestStreak: 1,
+            lastActiveDate: new Date().toISOString(),
+            availability: ['Flexible'],
+            interests: ['Peer Learning'],
+            isAdmin: false,
+            isSuspended: false,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          storageService.saveUser(mockUser as any);
+        }
+      }
+
+      storageService.setCurrentUserId(mockUser.id);
+      return;
     }
 
     const { error } = await supabase.auth.signInWithOAuth({
@@ -348,9 +412,12 @@ class AuthService {
     }
 
     if (!isSupabaseConfigured) {
-      throw new Error(
-        'Supabase is not configured. Please define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your environment.'
-      );
+      // Mock local fallback
+      const users = typeof window !== 'undefined' ? JSON.parse(localStorage.getItem('skillswap_users') || '[]') : [];
+      if (!users.find((u: any) => u.email === email.trim()) && email.trim() !== 'sujal@stanford.edu') {
+        throw new Error('Account not found (mock).');
+      }
+      return; // "Email sent" mock success
     }
 
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {

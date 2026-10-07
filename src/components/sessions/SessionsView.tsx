@@ -8,13 +8,19 @@ import {
   CheckCircle2,
   Star,
   ExternalLink,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  ListChecks
 } from 'lucide-react';
 import { User, LearningSession } from '../../types';
 import { storageService } from '../../services/storageService';
 import { EmptyState } from '../ui/EmptyState';
 import { Modal } from '../ui/Modal';
 import { Rating } from '../ui/Rating';
+import { LessonPlanModal } from './LessonPlanModal';
+import { CoveredTopicsModal } from './CoveredTopicsModal';
+import { usePageLoader } from '../../hooks/usePageLoader';
+import { SessionsSkeleton } from '../ui/Skeleton';
 
 interface SessionsViewProps {
   currentUser: User;
@@ -29,8 +35,11 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
   onOpenChatWith,
   onNavigate
 }) => {
+  const isLoading = usePageLoader(450);
   const [sessions, setSessions] = useState<LearningSession[]>([]);
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+  const [coveredTopicsSession, setCoveredTopicsSession] = useState<LearningSession | null>(null);
+  const [selectedPlanSession, setSelectedPlanSession] = useState<LearningSession | null>(null);
 
   // New session state
   const [partnerId, setPartnerId] = useState('');
@@ -50,6 +59,8 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
 
   const allUsers = storageService.getUsers().filter(u => u.id !== currentUser.id);
   const mySkills = storageService.getUserSkills(currentUser.id);
+
+  if (isLoading) return <SessionsSkeleton />;
 
   const upcomingSessions = sessions.filter(s => s.status === 'scheduled' || s.status === 'in-progress');
   const pastSessions = sessions.filter(s => s.status === 'completed' || s.status === 'cancelled');
@@ -220,18 +231,32 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                     className="pt-3 flex items-center justify-between gap-2"
                     style={{ borderTop: '1px solid var(--color-soft)' }}
                   >
-                    <button
-                      type="button"
-                      onClick={() => onOpenChatWith(otherId)}
-                      className="px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
-                      style={{
-                        border: '1px solid var(--color-soft)',
-                        color: 'var(--color-text)'
-                      }}
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>Chat</span>
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpenChatWith(otherId)}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{
+                          border: '1px solid var(--color-soft)',
+                          color: 'var(--color-text)'
+                        }}
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Chat</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPlanSession(sess)}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{
+                          border: '1px solid var(--color-soft)',
+                          color: 'var(--color-primary)'
+                        }}
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>Plan this session</span>
+                      </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => onJoinCall(sess)}
@@ -269,6 +294,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
             {pastSessions.map(s => {
               const isTeacher = s.teacherId === currentUser.id;
               const partnerName = isTeacher ? s.learnerName : s.teacherName;
+              const hasTopics = s.coveredTopics && s.coveredTopics.length > 0;
               return (
                 <div
                   key={s.id}
@@ -279,9 +305,9 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                     borderRadius: 'var(--radius-card)'
                   }}
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center font-medium"
+                      className="w-9 h-9 rounded-full flex items-center justify-center font-medium shrink-0"
                       style={{
                         backgroundColor: 'var(--color-soft)',
                         color: 'var(--color-primary)'
@@ -289,7 +315,7 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                     >
                       ✓
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <h4
                         className="font-medium"
                         style={{ color: 'var(--color-text)', fontFamily: 'var(--font-heading)' }}
@@ -299,17 +325,36 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
                       <p className="text-[11px]" style={{ color: 'var(--color-muted)' }}>
                         Completed on {new Date(s.scheduledAt).toLocaleDateString()} • {s.timeSlot}
                       </p>
+                      {hasTopics && (
+                        <p className="text-[11px] mt-0.5" style={{ color: 'var(--color-primary)' }}>
+                          {s.coveredTopics!.length} topic{s.coveredTopics!.length !== 1 ? 's' : ''} verified
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  {s.reviewRating && (
-                    <div className="flex items-center gap-2">
-                      <Rating value={s.reviewRating} size="sm" />
-                      <span className="text-[11px] italic max-w-xs truncate" style={{ color: 'var(--color-muted)' }}>
-                        "{s.reviewComment}"
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {s.reviewRating && (
+                      <div className="flex items-center gap-2">
+                        <Rating value={s.reviewRating} size="sm" />
+                      </div>
+                    )}
+                    {/* Teacher sees "Verify Topics", learner sees "View Topics" if set */}
+                    {(isTeacher || hasTopics) && (
+                      <button
+                        type="button"
+                        onClick={() => setCoveredTopicsSession(s)}
+                        className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 cursor-pointer hover:opacity-80 transition-opacity"
+                        style={{
+                          border: '1px solid var(--color-soft)',
+                          color: isTeacher ? 'var(--color-primary)' : 'var(--color-muted)'
+                        }}
+                      >
+                        <ListChecks className="w-3.5 h-3.5" />
+                        {isTeacher ? (hasTopics ? 'Update Topics' : 'Verify Topics') : 'View Topics'}
+                      </button>
+                    )}
+                  </div>
                 </div>
               );
             })}
@@ -449,6 +494,20 @@ export const SessionsView: React.FC<SessionsViewProps> = ({
           </div>
         </form>
       </Modal>
+      {/* Lesson Plan Modal (teacher editable, learner read-only) */}
+      <LessonPlanModal
+        session={selectedPlanSession}
+        currentUser={currentUser}
+        isOpen={selectedPlanSession !== null}
+        onClose={() => setSelectedPlanSession(null)}
+      />
+      {/* Covered Topics Modal — teachers verify, learners view */}
+      <CoveredTopicsModal
+        session={coveredTopicsSession}
+        currentUser={currentUser}
+        isOpen={coveredTopicsSession !== null}
+        onClose={() => setCoveredTopicsSession(null)}
+      />
     </div>
   );
 };

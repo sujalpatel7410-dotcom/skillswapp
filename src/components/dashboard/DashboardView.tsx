@@ -21,6 +21,8 @@ import { SkillChip } from '../ui/SkillChip';
 import { Rating } from '../ui/Rating';
 import { Modal } from '../ui/Modal';
 import { MatchScoreBadge } from '../matching/MatchScoreBadge';
+import { usePageLoader } from '../../hooks/usePageLoader';
+import { DashboardSkeleton } from '../ui/Skeleton';
 
 interface DashboardViewProps {
   currentUser: User;
@@ -56,23 +58,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const teachingSkills = userSkills.filter(s => s.type === 'teach');
   const learningSkills = userSkills.filter(s => s.type === 'learn');
 
+  const isLoading = usePageLoader(500);
+  if (isLoading) return <DashboardSkeleton />;
+
   // Greeting based on time
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
   return (
     <div className="space-y-8 pb-12">
-      {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Enhanced Welcome Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-gradient-to-r from-indigo-500/10 via-purple-500/5 to-pink-500/10 border border-indigo-500/20 dark:from-indigo-900/30 dark:via-purple-900/20 dark:to-pink-900/30">
         <div>
           <h1
-            className="text-2xl sm:text-3xl font-medium tracking-tight"
-            style={{ color: 'var(--color-text)', fontFamily: 'var(--font-heading)' }}
+            className="text-2xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-500 to-purple-600 bg-clip-text text-transparent dark:from-indigo-400 dark:to-purple-500"
+            style={{ fontFamily: 'var(--font-heading)' }}
           >
             {greeting}, {currentUser.name.split(' ')[0]} 👋
           </h1>
           <p className="text-xs sm:text-sm mt-1" style={{ color: 'var(--color-muted)' }}>
-            Here is your daily learning snapshot and top recommended campus skill exchanges.
+            Welcome to your daily learning snapshot and top recommended campus skill exchanges.
           </p>
         </div>
 
@@ -80,14 +85,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('/matches')}
-            className="px-5 py-2.5 rounded-full text-xs font-medium transition-all flex items-center gap-2 cursor-pointer hover:opacity-85"
+            className="px-6 py-3 rounded-full text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer hover:opacity-90 hover:scale-105 shadow-md"
             style={{
-              backgroundColor: 'var(--color-soft)',
-              color: 'var(--color-primary)'
+              backgroundColor: 'var(--color-primary)',
+              color: '#FFFFFF'
             }}
           >
-            <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--color-primary)' }} />
-            <span>Find Skill Matches</span>
+            <Sparkles className="w-4 h-4" />
+            <span>Go to Core Exchange</span>
           </button>
         </div>
       </div>

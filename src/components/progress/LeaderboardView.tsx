@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { Trophy, Star, Flame, Video, Building, Award, ShieldCheck } from 'lucide-react';
 import { storageService } from '../../services/storageService';
 import { Rating } from '../ui/Rating';
+import { usePageLoader } from '../../hooks/usePageLoader';
+import { BadgesSkeleton } from '../ui/Skeleton';
 
 interface LeaderboardViewProps {
   onNavigate: (route: string) => void;
 }
 
 export const LeaderboardView: React.FC<LeaderboardViewProps> = ({ onNavigate }) => {
+  const isLoading = usePageLoader(400);
+  if (isLoading) return <BadgesSkeleton />;
   const [tab, setTab] = useState<'teachers' | 'learners' | 'consistent' | 'helpful'>('teachers');
   const [selectedCollege, setSelectedCollege] = useState<string>('all');
 

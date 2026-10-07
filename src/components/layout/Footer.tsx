@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, ShieldCheck, Heart, Github, GraduationCap } from 'lucide-react';
+import { Sparkles, ShieldCheck, GraduationCap, Mail, Phone } from 'lucide-react';
 
 interface FooterProps {
   onNavigate: (route: string) => void;
@@ -48,6 +48,28 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
               <ShieldCheck className="w-3.5 h-3.5" style={{ color: 'var(--color-primary)' }} />
               <span>Verified Campus Community</span>
             </div>
+
+            {/* Clickable Contact Info */}
+            <div className="space-y-1.5 pt-1">
+              <a
+                href="mailto:hello@skillswap.app"
+                className="flex items-center gap-2 text-xs hover:opacity-80 transition-opacity"
+                style={{ color: 'var(--color-muted)' }}
+                aria-label="Send email to SkillSwap"
+              >
+                <Mail className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--color-primary)' }} />
+                <span>hello@skillswap.app</span>
+              </a>
+              <a
+                href="tel:+918000000000"
+                className="flex items-center gap-2 text-xs hover:opacity-80 transition-opacity"
+                style={{ color: 'var(--color-muted)' }}
+                aria-label="Call SkillSwap"
+              >
+                <Phone className="w-3.5 h-3.5 shrink-0" style={{ color: 'var(--color-primary)' }} />
+                <span>+91 80000 00000</span>
+              </a>
+            </div>
           </div>
 
           {/* Col 2: Platform Links */}
@@ -60,22 +82,22 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </h4>
             <ul className="space-y-2 text-xs" style={{ color: 'var(--color-muted)' }}>
               <li>
-                <button onClick={() => onNavigate('/discover')} className="hover:opacity-75 transition-opacity cursor-pointer">
+                <button onClick={() => onNavigate('/discover')} className="hover:opacity-75 transition-opacity cursor-pointer text-left">
                   Campus Discover
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/matches')} className="hover:opacity-75 transition-opacity cursor-pointer">
+                <button onClick={() => onNavigate('/matches')} className="hover:opacity-75 transition-opacity cursor-pointer text-left">
                   AI Matching Engine
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/leaderboard')} className="hover:opacity-75 transition-opacity cursor-pointer">
+                <button onClick={() => onNavigate('/leaderboard')} className="hover:opacity-75 transition-opacity cursor-pointer text-left">
                   College Leaderboard
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/badges')} className="hover:opacity-75 transition-opacity cursor-pointer">
+                <button onClick={() => onNavigate('/badges')} className="hover:opacity-75 transition-opacity cursor-pointer text-left">
                   Achievement Badges
                 </button>
               </li>
@@ -92,17 +114,17 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate }) => {
             </h4>
             <ul className="space-y-2 text-xs" style={{ color: 'var(--color-muted)' }}>
               <li>
-                <button onClick={() => onNavigate('/how-it-works')} className="hover:opacity-75 transition-opacity cursor-pointer">
+                <button onClick={() => onNavigate('/how-it-works')} className="hover:opacity-75 transition-opacity cursor-pointer text-left">
                   How It Works
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/pricing')} className="hover:opacity-75 transition-opacity cursor-pointer">
+                <button onClick={() => onNavigate('/pricing')} className="hover:opacity-75 transition-opacity cursor-pointer text-left">
                   Business Model & Pricing
                 </button>
               </li>
               <li>
-                <button onClick={() => onNavigate('/dashboard')} className="hover:opacity-75 transition-opacity cursor-pointer">
+                <button onClick={() => onNavigate('/dashboard')} className="hover:opacity-75 transition-opacity cursor-pointer text-left">
                   Student Dashboard
                 </button>
               </li>

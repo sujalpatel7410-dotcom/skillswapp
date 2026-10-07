@@ -186,7 +186,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onJoinFree }) =>
                       color: 'var(--color-muted)',
                       border: '1px solid var(--color-soft)'
                     }}
-                  >
+                   aria-label="Action">
                     {p.cta}
                   </button>
                 ) : (
@@ -198,7 +198,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onJoinFree }) =>
                       backgroundColor: p.popular ? 'var(--color-primary)' : 'var(--color-soft)',
                       color: p.popular ? '#FFFFFF' : 'var(--color-primary)'
                     }}
-                  >
+                   aria-label="Action">
                     {p.cta}
                   </button>
                 )}

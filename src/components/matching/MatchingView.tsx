@@ -15,7 +15,7 @@ import {
   Radio,
   Video
 } from 'lucide-react';
-import { User, AIMatchResult, MatchRequest } from '../../types';
+import { User, AIMatchResult, MatchRequest, UserSkill } from '../../types';
 import { matchingService } from '../../services/matchingService';
 import { storageService } from '../../services/storageService';
 import { Rating } from '../ui/Rating';
@@ -23,6 +23,9 @@ import { EmptyState } from '../ui/EmptyState';
 import { ExchangeRequestModal } from './ExchangeRequestModal';
 import { Modal } from '../ui/Modal';
 import { MatchScoreBadge } from './MatchScoreBadge';
+import { MatchInsightPanel } from './MatchInsightPanel';
+import { usePageLoader } from '../../hooks/usePageLoader';
+import { DiscoverSkeleton } from '../ui/Skeleton';
 
 interface MatchingViewProps {
   currentUser: User;
@@ -38,6 +41,7 @@ export const MatchingView: React.FC<MatchingViewProps> = ({
   const [activeTab, setActiveTab] = useState<'matches' | 'requests'>('matches');
   const [matches, setMatches] = useState<AIMatchResult[]>([]);
   const [requests, setRequests] = useState<MatchRequest[]>([]);
+  const [allUserSkills, setAllUserSkills] = useState<UserSkill[]>([]);
   const [liveOnlyFilter, setLiveOnlyFilter] = useState(false);
   const [selectedPartnerForSwap, setSelectedPartnerForSwap] = useState<User | null>(null);
   const [selectedMatchDetails, setSelectedMatchDetails] = useState<AIMatchResult | null>(null);
@@ -46,6 +50,7 @@ export const MatchingView: React.FC<MatchingViewProps> = ({
     const update = () => {
       setMatches(matchingService.getTopMatches(currentUser.id));
       setRequests(storageService.getMatchRequests(currentUser.id));
+      setAllUserSkills(storageService.getUserSkills());
     };
     update();
     const unsub = storageService.subscribe(update);
@@ -54,6 +59,9 @@ export const MatchingView: React.FC<MatchingViewProps> = ({
 
   const liveMatches = matches.filter(m => m.partner.isAvailableForLiveSession);
   const displayedMatches = liveOnlyFilter ? liveMatches : matches;
+
+  const isLoading = usePageLoader(500);
+  if (isLoading) return <DiscoverSkeleton />;
 
   const handleAcceptRequest = (reqId: string) => {
     storageService.updateMatchRequestStatus(reqId, 'accepted');
@@ -75,7 +83,7 @@ export const MatchingView: React.FC<MatchingViewProps> = ({
               className="text-2xl font-medium tracking-tight"
               style={{ color: 'var(--color-text)', fontFamily: 'var(--font-heading)' }}
             >
-              AI Skill Matching Engine
+              Core Exchange
             </h1>
             <span
               className="px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -88,7 +96,7 @@ export const MatchingView: React.FC<MatchingViewProps> = ({
             </span>
           </div>
           <p className="text-xs sm:text-sm mt-1" style={{ color: 'var(--color-muted)' }}>
-            Recommends compatible campus peers where what you teach balances what they want to learn.
+            Find compatible peers. You teach what they need, and they teach what you want to learn.
           </p>
         </div>
 
@@ -409,20 +417,29 @@ export const MatchingView: React.FC<MatchingViewProps> = ({
                       </div>
                     </div>
 
-                    {/* Why this match? */}
-                    <div className="space-y-1.5 mb-4">
+                    {/* AI-generated "Why you match" insight panel */}
+                    <div className="mb-4">
+                      <MatchInsightPanel
+                        currentUser={currentUser}
+                        partner={m.partner}
+                        allUserSkills={allUserSkills}
+                      />
+                    </div>
+
+                    {/* Algorithmic reasons (compact, below AI panel) */}
+                    <div className="space-y-1 mb-4">
                       <span
                         className="text-[10px] font-medium uppercase tracking-wider"
-                        style={{ color: 'var(--color-primary)' }}
+                        style={{ color: 'var(--color-muted)' }}
                       >
-                        Why this match?
+                        Algorithm signals
                       </span>
-                      <ul className="space-y-1 text-xs" style={{ color: 'var(--color-muted)' }}>
+                      <ul className="space-y-0.5 text-xs" style={{ color: 'var(--color-muted)' }}>
                         {m.reasons.slice(0, 3).map((r, i) => (
                           <li key={i} className="flex items-start gap-2">
                             <span
                               className="w-1.5 h-1.5 rounded-full mt-1.5 shrink-0"
-                              style={{ backgroundColor: 'var(--color-primary)' }}
+                              style={{ backgroundColor: 'var(--color-soft)' }}
                             />
                             <span>{r}</span>
                           </li>
